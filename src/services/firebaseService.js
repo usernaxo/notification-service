@@ -2,29 +2,25 @@ import admin from '../config/firebase.js';
 
 class FirebaseService {
 
-    async sendMulticastNotification({tokens, notification, android, apns}) {
-
-        const message = {tokens, notification, android, apns};
-
-        return this._send(message);
-
-    }
-
-    async sendMulticastData({tokens, data, android, apns}) {
-
-        const message = {tokens, data, android, apns};
-
-        return this._send(message);
-
-    }
-
-    async _send(message) {
+    async send(tokens, message) {
 
         try {
 
-            const response = await admin.messaging().sendEachForMulticast(message);
+            const result = await admin.messaging().sendEachForMulticast({tokens: tokens, ...message});
 
-            return response;
+            const invalidTokens = [];
+
+            result.responses.forEach((response, index) => {
+
+                if (!response.success && response.error?.code === 'messaging/registration-token-not-registered') {
+
+                    invalidTokens.push(tokens[index]);
+
+                }
+
+            });
+
+            return { successCount: result.successCount, failureCount: result.failureCount, invalidTokens }
             
         } catch (e) {
 
